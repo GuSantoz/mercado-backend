@@ -4,6 +4,7 @@ from src.Domain.product import ProductDomain
 from src.Domain.sale import SaleDomain
 from src.Infrastructure.Model.product import Product
 from src.Infrastructure.Model.sale import Sale
+from src.Infrastructure.Model.sale_items import SaleItem
 from src.config.data_base import db
 from datetime import datetime
 
