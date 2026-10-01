@@ -86,6 +86,7 @@ class SaleController:
             )
 
         itens = data.get("itens")
+        coupon_code = data.get("coupon_code")
 
         if (
             not itens
@@ -104,7 +105,8 @@ class SaleController:
 
         result = SaleService.create_venda(
             user_id,
-            itens
+            itens,
+            coupon_code
         )
 
         if not result["success"]:

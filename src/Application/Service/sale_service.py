@@ -3,6 +3,7 @@ from src.Infrastructure.Model.sale_items import SaleItem
 from src.Application.Service.product_service import ProductService
 from src.config.data_base import db
 from src.Infrastructure.Model.product import Product
+from src.Infrastructure.Model.coupon import Coupon
 
 from decimal import Decimal
 import random
@@ -16,7 +17,7 @@ class SaleService:
         return f"P-{numero}"
 
     @staticmethod
-    def create_venda(user_id, itens):
+    def create_venda(user_id, itens, coupon_code=None):
         try:
             itens_venda = {}
 
@@ -104,6 +105,33 @@ class SaleService:
 
                 total_venda += total_item
 
+            subtotal = total_venda
+            discount_applied = Decimal("0.00")
+            coupon_id = None
+            applied_coupon_code = None
+
+            if coupon_code:
+                from src.Application.Service.coupon_service import CouponService
+                validation = CouponService.validate_coupon(user_id, coupon_code, subtotal)
+                if not validation["success"]:
+                    db.session.rollback()
+                    ProductService.add_stock_batch(user_id, itens_venda)
+                    return validation
+
+                discount_applied = Decimal(str(validation["discount_applied"]))
+                total_venda = Decimal(str(validation["total_price"]))
+                coupon_id = validation["coupon_id"]
+                applied_coupon_code = validation["coupon_code"]
+
+                # Incrementa contador de usos do cupom
+                coupon_obj = db.session.query(Coupon).filter(Coupon.id == coupon_id).first()
+                if coupon_obj:
+                    coupon_obj.usage_count += 1
+
+            sale.subtotal = subtotal
+            sale.discount_applied = discount_applied
+            sale.coupon_id = coupon_id
+            sale.coupon_code = applied_coupon_code
             sale.total_price = total_venda
 
             db.session.commit()
@@ -201,6 +229,11 @@ class SaleService:
 
                     product.quantity += item.quantity
 
+                if sale.coupon_id:
+                    coupon = db.session.query(Coupon).filter(Coupon.id == sale.coupon_id).first()
+                    if coupon and coupon.usage_count > 0:
+                        coupon.usage_count -= 1
+
             # =====================================================
             # REATIVAR VENDA
             # Retira novamente os produtos do estoque
@@ -248,6 +281,11 @@ class SaleService:
                     )
 
                     product.quantity -= item.quantity
+
+                if sale.coupon_id:
+                    coupon = db.session.query(Coupon).filter(Coupon.id == sale.coupon_id).first()
+                    if coupon:
+                        coupon.usage_count += 1
 
             # Atualiza o status da venda
             sale.status = new_status
