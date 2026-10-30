@@ -1,11 +1,12 @@
 from src.Domain.user import UserDomain
 from src.Infrastructure.Model.user import User
+from src.Infrastructure.Model.employee import Employee
 from src.config.data_base import db 
 from datetime import datetime, timedelta
 import jwt
 import os  
+import re
 from werkzeug.security import generate_password_hash, check_password_hash
-
 
 SECRET_KEY = os.getenv("SECRET_KEY", "sua-chave-super-secreta")
 
@@ -54,25 +55,52 @@ class UserService:
         return False
     
     @staticmethod
-    def authenticate_user(cnpj, password):
-        user = db.session.query(User).filter(User.cnpj == cnpj).first()
-        if not user or not check_password_hash(user.password, password):
-            return {"success": False, "message": "Credenciais inválidas. CNPJ ou senha incorretos."}
+    def authenticate_user(documento, password):
+        # Remove pontuações para contar os dígitos (deixa só números)
+        doc_limpo = re.sub(r'\D', '', documento)
+        
+        # 1. TENTA LOGIN COMO DONO (CNPJ - 14 dígitos)
+        if len(doc_limpo) == 14:
+            user = db.session.query(User).filter(User.cnpj == documento).first()
+            if not user or not check_password_hash(user.password, password):
+                return {"success": False, "message": "Credenciais inválidas. CNPJ ou senha incorretos."}
 
-        if user.status != "Ativo":
-            return {"success": False, "message": "Usuário inativo. Por favor, ative sua conta primeiro."}
-        
-        token = jwt.encode(
-            {
-                "user_id": user.id, 
-                "cnpj": user.cnpj, 
-                "exp": datetime.utcnow() + timedelta(hours=1)
-            },
-            SECRET_KEY,
-            algorithm="HS256"
-        )
-        
-        return {"success": True, "token": token, "nome": user.name}
+            if user.status != "Ativo":
+                return {"success": False, "message": "Usuário inativo. Por favor, ative sua conta primeiro."}
+            
+            token = jwt.encode(
+                {
+                    "user_id": user.id, 
+                    "store_id": user.id, # O dono é a própria loja
+                    "documento": user.cnpj, 
+                    "role": "DONO", # Papel master
+                    "exp": datetime.utcnow() + timedelta(hours=8)
+                },
+                SECRET_KEY, algorithm="HS256"
+            )
+            return {"success": True, "token": token, "nome": user.name, "role": "DONO"}
+
+        # 2. TENTA LOGIN COMO FUNCIONÁRIO (CPF - 11 dígitos)
+        elif len(doc_limpo) == 11:
+            employee = db.session.query(Employee).filter(Employee.cpf == documento).first()
+            if not employee or not check_password_hash(employee.password, password):
+                return {"success": False, "message": "Credenciais inválidas. CPF ou senha incorretos."}
+
+            token = jwt.encode(
+                {
+                    "user_id": employee.id, 
+                    "store_id": employee.store_id, # Vincula o funcionário à loja do dono
+                    "documento": employee.cpf, 
+                    "role": employee.role, # GERENTE, OPERADOR ou COMPRADOR
+                    "exp": datetime.utcnow() + timedelta(hours=8)
+                },
+                SECRET_KEY, algorithm="HS256"
+            )
+            return {"success": True, "token": token, "nome": employee.name, "role": employee.role}
+
+        # 3. DOCUMENTO INVÁLIDO
+        else:
+            return {"success": False, "message": "Documento inválido. Digite um CPF ou CNPJ válido."}
 
     @staticmethod
     def validate_token(token):
@@ -86,6 +114,8 @@ class UserService:
             return {
                 "success": True, 
                 "user_id": data.get("user_id"),
+                "store_id": data.get("store_id"),
+                "role": data.get("role")
             }
         
         except Exception as e:

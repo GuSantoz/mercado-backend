@@ -11,6 +11,8 @@ class User(db.Model):
     status = db.Column(db.String(20), default="Inativo")
     code = db.Column(db.String(20), unique=True, nullable=False) # Nova coluna com valor padrão
 
+    employees = db.relationship('Employee', backref='store_owner', lazy=True)
+
     def to_dict(self):
         return {
             "id": self.id,

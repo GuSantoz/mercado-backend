@@ -2,6 +2,7 @@ from src.Application.Controllers.sale_controller import SaleController
 from src.Application.Controllers.user_controller import UserController
 from src.Application.Controllers.product_controller import ProductController
 from src.Application.Controllers.coupon_controller import CouponController
+from src.Application.Controllers.employee_controller import EmployeeController # NOVO IMPORT
 from flask import jsonify, make_response, send_from_directory
 from src.Infrastructure.storage.image_storage import get_upload_folder
 
@@ -36,6 +37,16 @@ def init_routes(app):
     def update_user():
         return UserController.update_user()
     
+    # --- ROTAS DE FUNCIONÁRIOS ---
+    @app.route('/employee', methods=['POST'])
+    def register_employee():
+        return EmployeeController.register_employee()
+        
+    @app.route('/employees', methods=['GET'])
+    def list_employees():
+        return EmployeeController.list_employees()
+    # -------------------------------------
+
     @app.route('/product', methods=['GET'])
     def get_all_products():
         return ProductController.get_all_products()
@@ -99,4 +110,4 @@ def init_routes(app):
 
     @app.route('/coupon/validate', methods=['POST'])
     def validate_coupon():
-        return CouponController.validate_coupon()
+        return CouponController.validate_coupon()

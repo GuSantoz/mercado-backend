@@ -50,19 +50,20 @@ class UserController:
     def login():
         data = request.get_json()
         
-        cnpj = data.get('cnpj')
+        documento = data.get('documento') or data.get('cnpj') # Suporte retroativo caso o front ainda mande 'cnpj'
         password = data.get('password') 
 
-        if not cnpj or not password:
-            return make_response(jsonify({"erro": "CNPJ e senha são obrigatórios"}), 400)
+        if not documento or not password:
+            return make_response(jsonify({"erro": "CPF/CNPJ e senha são obrigatórios"}), 400)
 
-        result = UserService.authenticate_user(cnpj, password)
+        result = UserService.authenticate_user(documento, password)
         
         if result["success"]:
             return make_response(jsonify({
                 "mensagem": "Login realizado com sucesso",
                 "token": result["token"],
-                "nome": result["nome"]
+                "nome": result["nome"],
+                "role": result["role"] # Devolve o papel para o React montar o menu lateral
             }), 200)
         else:
             return make_response(jsonify({"erro": result["message"]}), 401)
