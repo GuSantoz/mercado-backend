@@ -68,13 +68,13 @@ class UserService:
             if user.status != "Ativo":
                 return {"success": False, "message": "Usuário inativo. Por favor, ative sua conta primeiro."}
             
-            # Dentro do authenticate_user, na parte do FUNCIONÁRIO:
+            # CORREÇÃO APLICADA: Substituído 'employee' por 'user'
             token = jwt.encode(
                 {
-                    "user_id": employee.id,        # TEM QUE SER employee.id (NÃO coloque store_id aqui)
-                    "store_id": employee.store_id, 
-                    "documento": employee.cpf,
-                    "role": employee.role,
+                    "user_id": user.id,        
+                    "store_id": user.id,       # Para o dono, a loja (store_id) é o próprio ID dele
+                    "documento": user.cnpj,
+                    "role": "DONO",
                     "exp": datetime.utcnow() + timedelta(hours=8)
                 },
                 SECRET_KEY, algorithm="HS256"
@@ -84,15 +84,21 @@ class UserService:
         # 2. TENTA LOGIN COMO FUNCIONÁRIO (CPF - 11 dígitos)
         elif len(doc_limpo) == 11:
             employee = db.session.query(Employee).filter(Employee.cpf == documento).first()
+            
             if not employee or not check_password_hash(employee.password, password):
                 return {"success": False, "message": "Credenciais inválidas. CPF ou senha incorretos."}
+
+            # ---> TRAVA DE FUNCIONÁRIO INATIVO ADICIONADA AQUI <---
+            if employee.status is False:
+                return {"success": False, "message": "Acesso bloqueado. Conta inativa."}
+            # ------------------------------------------------------
 
             token = jwt.encode(
                 {
                     "user_id": employee.id, 
                     "store_id": employee.store_id, # Vincula o funcionário à loja do dono
                     "documento": employee.cpf, 
-                    "role": employee.role, # GERENTE, OPERADOR ou COMPRADOR
+                    "role": employee.role,         # GERENTE, OPERADOR ou COMPRADOR
                     "exp": datetime.utcnow() + timedelta(hours=8)
                 },
                 SECRET_KEY, algorithm="HS256"
@@ -102,7 +108,7 @@ class UserService:
         # 3. DOCUMENTO INVÁLIDO
         else:
             return {"success": False, "message": "Documento inválido. Digite um CPF ou CNPJ válido."}
-
+    
     @staticmethod
     def validate_token(token):
         if not token or not token.startswith("Bearer "):

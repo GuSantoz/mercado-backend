@@ -64,3 +64,37 @@ class EmployeeController:
             "mensagem": "Funcionários listados com sucesso",
             "funcionarios": [emp.to_dict() for emp in employees]
         }), 200)
+
+
+    @staticmethod
+    def update_employee(employee_id):
+        token = request.headers.get("Authorization")
+
+        if not token:
+            return make_response(jsonify({"erro": "Token não fornecido"}), 401)
+
+        # Use a sua função padrão de validação de token
+        token_validation = UserService.validate_token(token) 
+
+        if not token_validation["success"]:
+            return make_response(jsonify({"erro": token_validation["message"]}), 401)
+
+        role = token_validation.get("role")
+        store_id = token_validation.get("store_id")
+
+        data = request.get_json()
+        if not data:
+            return make_response(jsonify({"erro": "Nenhum dado fornecido para atualização"}), 400)
+
+        # Chama o Service passando os dados
+        result = EmployeeService.update_employee(employee_id, role, store_id, data)
+
+        if not result["success"]:
+            return make_response(jsonify({"erro": result["message"]}), 400)
+
+        return make_response(
+            jsonify({
+                "mensagem": result["message"],
+                "funcionario": result["employee"]
+            }), 200
+        )

@@ -42,9 +42,14 @@ def init_routes(app):
     def register_employee():
         return EmployeeController.register_employee()
         
-    @app.route('/employees', methods=['GET'])
+    @app.route('/employee', methods=['GET'])
     def list_employees():
         return EmployeeController.list_employees()
+
+    # A URL fica algo como: PUT /funcionario/3
+    @app.route('/employee/<int:employee_id>', methods=['PUT'])
+    def update_employee_route(employee_id):
+        return EmployeeController.update_employee(employee_id)
     # -------------------------------------
 
     @app.route('/product', methods=['GET'])
