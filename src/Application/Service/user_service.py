@@ -68,12 +68,13 @@ class UserService:
             if user.status != "Ativo":
                 return {"success": False, "message": "Usuário inativo. Por favor, ative sua conta primeiro."}
             
+            # Dentro do authenticate_user, na parte do FUNCIONÁRIO:
             token = jwt.encode(
                 {
-                    "user_id": user.id, 
-                    "store_id": user.id, # O dono é a própria loja
-                    "documento": user.cnpj, 
-                    "role": "DONO", # Papel master
+                    "user_id": employee.id,        # TEM QUE SER employee.id (NÃO coloque store_id aqui)
+                    "store_id": employee.store_id, 
+                    "documento": employee.cpf,
+                    "role": employee.role,
                     "exp": datetime.utcnow() + timedelta(hours=8)
                 },
                 SECRET_KEY, algorithm="HS256"

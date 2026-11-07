@@ -28,7 +28,6 @@ class SaleService:
                 
                 itens_venda[product_id] = itens_venda.get(product_id, 0) + quantidade
 
-            # Dá baixa no estoque do dono/loja
             resultado_estoque = ProductService.subtract_stock_batch(store_id, itens_venda)
             if not resultado_estoque["success"]:
                 return resultado_estoque
@@ -36,13 +35,16 @@ class SaleService:
             mapa_produtos = {p.id: p for p in resultado_estoque["products"]}
             codigo_pedido = SaleService.generate_order_code()
 
-            # Se for DONO, grava o user_id. Se for OPERADOR/FUNCIONÁRIO, grava o store_id na user_id e o id no employee_id
-            if role == "DONO":
-                real_user_id = user_id
+            # Normaliza a permissão para maiúsculo para evitar erros de digitação/case
+            role_upper = str(role).upper().strip() if role else ""
+
+            # Converte IDs para inteiros para garantir compatibilidade com o MySQL
+            if role_upper == "DONO":
+                real_user_id = int(user_id)
                 real_employee_id = None
             else:
-                real_user_id = store_id
-                real_employee_id = user_id
+                real_user_id = int(store_id)
+                real_employee_id = int(user_id)
 
             sale = Sale(
                 order_number=codigo_pedido,
@@ -74,7 +76,32 @@ class SaleService:
                 db.session.add(sale_item)
                 total_venda += total_item
 
-            sale.subtotal = total_venda
+            subtotal = total_venda
+            discount_applied = Decimal("0.00")
+            coupon_id = None
+            applied_coupon_code = None
+
+            if coupon_code:
+                from src.Application.Service.coupon_service import CouponService
+                validation = CouponService.validate_coupon(store_id, coupon_code, subtotal)
+                if not validation["success"]:
+                    db.session.rollback()
+                    ProductService.add_stock_batch(store_id, itens_venda)
+                    return validation
+
+                discount_applied = Decimal(str(validation["discount_applied"]))
+                total_venda = Decimal(str(validation["total_price"]))
+                coupon_id = validation["coupon_id"]
+                applied_coupon_code = validation["coupon_code"]
+
+                coupon_obj = db.session.query(Coupon).filter(Coupon.id == coupon_id).first()
+                if coupon_obj:
+                    coupon_obj.usage_count += 1
+
+            sale.subtotal = subtotal
+            sale.discount_applied = discount_applied
+            sale.coupon_id = coupon_id
+            sale.coupon_code = applied_coupon_code
             sale.total_price = total_venda
 
             db.session.commit()
@@ -89,12 +116,13 @@ class SaleService:
         try:
             query = db.session.query(Sale)
             
-            # Se for funcionário/operador, filtra apenas pelas vendas onde o employee_id é o dele
-            if role != "DONO":
-                sales = query.filter(Sale.employee_id == user_id).order_by(Sale.created_at.desc()).all()
+            role_upper = str(role).upper().strip() if role else ""
+
+            if role_upper != "DONO":
+                # Filtra garantindo que o ID do banco seja comparado com um número inteiro
+                sales = query.filter(Sale.employee_id == int(user_id)).order_by(Sale.created_at.desc()).all()
             else:
-                # Se for dono, busca todas as vendas da sua loja (store_id / user_id)
-                sales = query.filter(Sale.user_id == store_id).order_by(Sale.created_at.desc()).all()
+                sales = query.filter(Sale.user_id == int(store_id)).order_by(Sale.created_at.desc()).all()
 
             return sales
         except Exception as e:
