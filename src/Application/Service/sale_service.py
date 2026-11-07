@@ -130,16 +130,22 @@ class SaleService:
             return {"success": False, "message": f"Erro ao buscar vendas: {str(e)}"}
 
     @staticmethod
-    def update_status(sale_id, user_id, new_status):
+    def update_status(sale_id, user_id, role, store_id, new_status):
         try:
-            sale = (
-                db.session.query(Sale)
-                .filter(
+            role_upper = str(role).upper().strip() if role else ""
+
+            # Se for DONO ou GERENTE, busca a venda usando o ID da loja
+            if role_upper in ["DONO", "GERENTE", "OPERADOR"]:
+                sale = db.session.query(Sale).filter(
                     Sale.id == sale_id,
-                    Sale.user_id == user_id
-                )
-                .first()
-            )
+                    Sale.user_id == int(store_id)
+                ).first()
+            # Se for funcionário, busca garantindo que ele foi o vendedor
+            else:
+                sale = db.session.query(Sale).filter(
+                    Sale.id == sale_id,
+                    Sale.employee_id == int(user_id)
+                ).first()
 
             if not sale:
                 return {

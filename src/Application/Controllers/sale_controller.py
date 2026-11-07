@@ -91,7 +91,10 @@ class SaleController:
         if not token_validation["success"]:
             return make_response(jsonify({"erro": token_validation["message"]}), 401)
 
+        # 1. Extraindo os novos dados do token
         user_id = token_validation.get("user_id")
+        role = token_validation.get("role")
+        store_id = token_validation.get("store_id")
 
         data = request.get_json()
 
@@ -106,7 +109,8 @@ class SaleController:
         if "status" not in data:
             return make_response(jsonify({"erro": "Status não fornecido"}), 400)
 
-        result = SaleService.update_status(sale_id, user_id, data.get("status"))
+        # 2. Passando os 5 parâmetros agora esperados pelo Service
+        result = SaleService.update_status(sale_id, user_id, role, store_id, data.get("status"))
 
         if not result["success"]:
             return make_response(jsonify({"erro": result["message"]}), 400)
