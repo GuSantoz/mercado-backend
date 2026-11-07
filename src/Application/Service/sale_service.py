@@ -118,11 +118,12 @@ class SaleService:
             
             role_upper = str(role).upper().strip() if role else ""
 
-            if role_upper != "DONO":
-                # Filtra garantindo que o ID do banco seja comparado com um número inteiro
-                sales = query.filter(Sale.employee_id == int(user_id)).order_by(Sale.created_at.desc()).all()
-            else:
+            # Se for DONO ou GERENTE, busca todas as vendas da loja
+            if role_upper in ["DONO", "GERENTE"]:
                 sales = query.filter(Sale.user_id == int(store_id)).order_by(Sale.created_at.desc()).all()
+            # Caso contrário (funcionário comum), busca apenas as vendas dele
+            else:
+                sales = query.filter(Sale.employee_id == int(user_id)).order_by(Sale.created_at.desc()).all()
 
             return sales
         except Exception as e:
