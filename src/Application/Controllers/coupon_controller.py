@@ -131,9 +131,19 @@ class CouponController:
 
     @staticmethod
     def validate_coupon():
-        user_id, err_response = CouponController._authenticate()
-        if err_response:
-            return err_response
+        # 1. Fazemos a validação do token diretamente para extrair o store_id
+        token = request.headers.get("Authorization")
+
+        if not token:
+            return make_response(jsonify({"erro": "Token não fornecido"}), 401)
+
+        token_validation = UserService.validate_token(token)
+
+        if not token_validation["success"]:
+            return make_response(jsonify({"erro": token_validation["message"]}), 401)
+
+        # 2. Pegamos o store_id do token
+        store_id = token_validation.get("store_id")
 
         data = request.get_json()
         if not data:
@@ -148,7 +158,9 @@ class CouponController:
         if subtotal is None:
             return make_response(jsonify({"erro": "Subtotal da compra é obrigatório"}), 400)
 
-        result = CouponService.validate_coupon(user_id, code, subtotal)
+        # 3. Passamos o store_id para o Service em vez do user_id
+        result = CouponService.validate_coupon(store_id, code, subtotal)
+        
         if not result["success"]:
             return make_response(jsonify({"erro": result["message"]}), 400)
 

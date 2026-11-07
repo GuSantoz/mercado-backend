@@ -264,16 +264,18 @@ class CouponService:
             return {"success": False, "message": f"Erro ao excluir cupom: {str(e)}"}
 
     @staticmethod
-    def validate_coupon(user_id, code, subtotal):
+    def validate_coupon(store_id, code, subtotal): # <-- Alterado de user_id para store_id
         if not code:
             return {"success": False, "message": "Informe o código do cupom."}
 
         code_clean = str(code).strip().upper()
         coupon = (
             db.session.query(Coupon)
-            .filter(Coupon.user_id == user_id, Coupon.code == code_clean)
+            # Busca o cupom garantindo que pertence à loja atual (store_id)
+            .filter(Coupon.user_id == int(store_id), Coupon.code == code_clean)
             .first()
         )
+        
         if not coupon:
             return {"success": False, "message": f"Cupom '{code_clean}' não encontrado."}
 
