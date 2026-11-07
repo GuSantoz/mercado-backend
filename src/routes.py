@@ -1,6 +1,8 @@
 from src.Application.Controllers.sale_controller import SaleController
 from src.Application.Controllers.user_controller import UserController
 from src.Application.Controllers.product_controller import ProductController
+from src.Application.Controllers.coupon_controller import CouponController
+from src.Application.Controllers.employee_controller import EmployeeController # NOVO IMPORT
 from flask import jsonify, make_response, send_from_directory
 from src.Infrastructure.storage.image_storage import get_upload_folder
 
@@ -35,6 +37,16 @@ def init_routes(app):
     def update_user():
         return UserController.update_user()
     
+    # --- ROTAS DE FUNCIONÁRIOS ---
+    @app.route('/employee', methods=['POST'])
+    def register_employee():
+        return EmployeeController.register_employee()
+        
+    @app.route('/employees', methods=['GET'])
+    def list_employees():
+        return EmployeeController.list_employees()
+    # -------------------------------------
+
     @app.route('/product', methods=['GET'])
     def get_all_products():
         return ProductController.get_all_products()
@@ -58,6 +70,7 @@ def init_routes(app):
     @app.route('/product/status', methods=['PUT'])
     def update_status_product():
         return ProductController.update_status_product()
+        
     @app.route('/venda', methods=['POST'])
     def create_venda():
         return SaleController.create_venda()
@@ -69,3 +82,32 @@ def init_routes(app):
     @app.route('/venda/status', methods=['PUT'])
     def update_status_sale():
         return SaleController.update_status_sale()
+
+    # --- ROTAS DE CUPONS DE DESCONTO ---
+    @app.route('/coupon', methods=['GET'])
+    def get_all_coupons():
+        return CouponController.get_all_coupons()
+
+    @app.route('/coupon', methods=['POST'])
+    def create_coupon():
+        return CouponController.create_coupon()
+
+    @app.route('/coupon/<int:coupon_id>', methods=['GET'])
+    def get_coupon_by_id(coupon_id):
+        return CouponController.get_coupon_by_id(coupon_id)
+
+    @app.route('/coupon/<int:coupon_id>', methods=['PUT'])
+    def update_coupon(coupon_id):
+        return CouponController.update_coupon(coupon_id)
+
+    @app.route('/coupon/<int:coupon_id>/status', methods=['PUT'])
+    def toggle_coupon_status(coupon_id):
+        return CouponController.toggle_status(coupon_id)
+
+    @app.route('/coupon/<int:coupon_id>', methods=['DELETE'])
+    def delete_coupon(coupon_id):
+        return CouponController.delete_coupon(coupon_id)
+
+    @app.route('/coupon/validate', methods=['POST'])
+    def validate_coupon():
+        return CouponController.validate_coupon()

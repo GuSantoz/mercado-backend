@@ -15,14 +15,14 @@ class ProductController:
         if not token_validation["success"]:
             return make_response(jsonify({"erro": token_validation["message"]}), 401) 
         
-        user_id = token_validation["user_id"]
+        loja_id = token_validation.get("store_id")
         
-        
-        products = ProductService.get_all_products(user_id)
+        # Agora buscamos os produtos passando o ID da loja/dono
+        products = ProductService.get_all_products(loja_id)
 
         return make_response(jsonify({
             "mensagem": "Produtos encontrados com sucesso",
-            "usuarios": [product.to_dict() for product in products]
+            "usuarios": [product.to_dict() for product in products] # O ideal seria "produtos" aqui em vez de "usuarios", mas mantive seu código!
         }), 200)
     
     @staticmethod
@@ -35,7 +35,7 @@ class ProductController:
         if not token_validation["success"]:
             return make_response(jsonify({"erro": token_validation["message"]}), 401)
         
-        user_id = token_validation["user_id"]
+        loja_id = token_validation.get("store_id")
 
         data = request.get_json()
         
@@ -47,7 +47,7 @@ class ProductController:
         if not name or not price or not quantity or not image:
             return make_response(jsonify({"erro": "Missing required fields"}), 400)
  
-        product = ProductService.create_product(name, price, quantity, image, user_id)
+        product = ProductService.create_product(name, price, quantity, image, loja_id)
  
         if not product["success"]:
             return make_response(jsonify({"erro": product["message"]}), 400)
